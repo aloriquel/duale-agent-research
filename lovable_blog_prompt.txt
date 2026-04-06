@@ -1,0 +1,17 @@
+Objetivo: Escribir una entrada de blog corporativo (SEO-friendly) para Duale (www.duale.es), la startup EdTech que crea un Copilot de IA para potenciar la inclusión en la FP Dual.
+
+Contexto de Noticias Actuales (Abril 2026):
+1. Demanda laboral: El 70% de las ofertas de trabajo en España ahora requieren titulados de Formación Profesional, consolidando a la FP Dual como la vía más rápida al empleo juvenil. (Fuente: RRHH Digital / El Español).
+2. Innovación Inclusiva: Herramientas tecnológicas de accesibilidad en aulas (como startups similares premiadas recientemente) están demostrando que la EdTech es fundamental para garantizar que alumnos con necesidades específicas no se queden atrás.
+3. Compromiso Empresarial: Cada vez hay más enfoque corporativo en la diversidad e inclusión de equipos desde los propios programas de prácticas.
+
+Instrucciones para Lovable:
+- Título: Crea un título atractivo y optimizado para SEO sobre "Tendencias de la FP Dual" y el "Papel de la IA en la Inclusión".
+- Tono: Profesional, visionario, empático y orientado a tutores de centros y empresas formadoras.
+- Estructura: 
+  - Introducción gancho usando el dato del "70% de ofertas de empleo".
+  - Cuerpo: Cómo la digitalización y las startups EdTech están resolviendo el reto de la inclusión de alumnos con NEE (Necesidades Educativas Especiales).
+  - Conclusión: Presentar a Duale como la solución líder para conectar centros educativos y empresas mediante IA que adapta la experiencia educativa.
+  - Llamada a la acción (CTA) a probar o contactar con Duale.
+- Longitud: Alrededor de 600-800 palabras.
+- Formato: Usa encabezados (H2, H3), viñetas y negritas para facilitar la lectura cruzada recomendada en diseño web.
