@@ -1,0 +1,23 @@
+# Ignore secrets
+config.py
+.env
+
+# Python compilation
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Log and data files
+*.log
+linkedin_post.txt
+*.xlsx
+*.csv
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
