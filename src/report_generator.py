@@ -1,132 +1,150 @@
 import requests
-import json
-from config import GEMINI_API_KEY, REPORT_LANGUAGE
+import time
+from config import GROQ_API_KEY, REPORT_LANGUAGE
+
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+MODEL = "llama-3.3-70b-versatile"
+
+# === COMPANY CONTEXT ===
+# Duale (www.duale.es) is an AI copilot specialized in Inclusive FP Dual (Spanish vocational training).
+# Core product: Automatically adapts tasks, exams and didactic materials for students with NEAE
+# (dislexia, TDAH, sensory/motor disabilities) — Human-in-the-loop: teacher reviews & approves.
+# Target customers:
+#   - Centros educativos (institutos) implementing FP Dual
+#   - Empresas colaboradoras (tutores de empresa) receiving FP Dual students
+# Key differentiators:
+#   - Specialized in Spanish FP Dual inclusive curriculum (all CCAA)
+#   - Legal compliance: LOMLOE Art.73, Ley FP 3/2022, LGD, AI Act
+#   - Generates Lectura Fácil and Pictogram materials automatically
+#   - Integrates with Moodle, Teams, Google Classroom
+# Competitors: No direct competitors in this niche. Indirect: generic AI (ChatGPT), basic LMS accessibility tools
+# Key market signals to monitor:
+#   - BOE / DOGC / BOCM convocatorias for EdTech/inclusión grants
+#   - Ministry of Education and regional Consejerías policy moves
+#   - New EdTech startups targeting FP Dual or accessibility
+#   - EU AI Act implementations affecting EdTech
+#   - Corporate tutor compliance obligations
+
+COMPANY_CONTEXT = """
+CONTEXTO DE EMPRESA:
+Duale (www.duale.es) es un copiloto de IA especializado en FP Dual Inclusiva en España.
+- PRODUCTO: Genera automáticamente adaptaciones curriculares y laborales para alumnos con NEAE (Necesidades Específicas de Apoyo Educativo: dislexia, TDAH, discapacidades sensoriales/motoras). El docente o tutor de empresa revisa y aprueba (Human-in-the-loop).
+- CLIENTES: (1) Centros educativos con FP Dual, (2) Empresas colaboradoras (tutores de empresa con obligación legal de "ajustes razonables").
+- DIFERENCIADORES: Alineado con currículos oficiales de todas las CCAA. Cumple LOMLOE Art.73, Ley FP 3/2022, LGD y AI Act. Genera materiales en Lectura Fácil y Pictogramas. Integra con Moodle, Teams, Classroom.
+- COMPETIDORES DIRECTOS: Ninguno conocido en este nicho (IA para FP Dual inclusiva España). Competencia indirecta: ChatGPT genérico, funcionalidades básicas de accesibilidad en LMS.
+- ETAPA: Startup early-stage buscando primeros centros piloto y subvenciones públicas.
+"""
+
+
+def _call_groq(prompt, max_retries=4):
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": 4096
+    }
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"Groq API call attempt {attempt}/{max_retries}...")
+            r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=60)
+            if r.status_code == 429:
+                wait = 15 * attempt
+                print(f"Rate limit. Waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            r.raise_for_status()
+            data = r.json()
+            text = data["choices"][0]["message"]["content"]
+            return text.replace("```html", "").replace("```", "").strip()
+        except Exception as e:
+            print(f"Error on attempt {attempt}: {e}")
+            time.sleep(5)
+    return None
+
 
 class ReportGenerator:
-    def __init__(self):
-        self.api_key = GEMINI_API_KEY
-        # Use v1beta and gemini-2.5-flash (confirmed available via browser)
-        self.model_name = "models/gemini-2.5-flash"
-        self.url = f"https://generativelanguage.googleapis.com/v1beta/{self.model_name}:generateContent?key={self.api_key}"
-        print(f"Using Gemini URL: {self.url.split('?')[0]}?key=HIDDEN")
-
     def generate_report(self, search_results):
-        """Synthesize search results into a 1-page structured report using REST API."""
-        if not self.api_key or self.api_key == "YOUR_GEMINI_API_KEY_HERE":
-            return self._generate_fallback_report(search_results)
+        prompt = f"""Eres el analista de mercado interno de Duale. Tienes acceso al siguiente contexto de empresa:
 
-        prompt = f"""
-        Actúa como un analista de mercado experto para la startup 'Duale' (www.duale.es).
-        Duale es un copilot de IA para FP Dual que ayuda a la inclusión de alumnos con NEE (Necesidades Educativas Especiales).
-        
-        A partir de los siguientes resultados de búsqueda REALES de esta semana (que incluyen el contenido extraído de las webs), redacta un informe de 1 página bien organizado en HTML.
-        
-        Resultados de búsqueda (Contenido extraído):
-        {search_results}
-        
-        El informe debe ser EXTREMADAMENTE ESPECÍFICO. No acepto generalidades.
-        Si mencionas un competidor, di qué está haciendo. Si mencionas una ayuda, di el nombre, plazo y cuantía si aparece.
-        Si mencionas una noticia, di la fecha y el medio.
-        
-        Estructura:
-        1. COMPETIDORES (Nuevos o movimientos detectados).
-        2. TENDENCIAS Y NOTICIAS RECIENTES (FP, IA en inclusión).
-        3. AYUDAS Y FINANCIACIÓN (Convocatorias abiertas, BOE, diarios oficiales, NextGen).
-        4. PROYECTOS PÚBLICOS Y LICITACIONES (Ministerio, Consejerías).
-        5. OPORTUNIDADES CLAVE PARA DUALE.
-        
-        Instrucciones CRUDAS:
-        - No uses frases como "Se recomienda vigilancia". Di "Se ha publicado X en la web Y".
-        - Incluye siempre los enlaces <a href='...'> originales de donde sale la información.
-        - Idioma: {REPORT_LANGUAGE}.
-        - Formato: HTML puro para email.
-        """
-        
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "temperature": 0.2
-            }
-        }
-        
-        try:
-            print("Generating report via Gemini REST API...")
-            response = requests.post(self.url, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Extract text from response
-            if "candidates" in data and len(data["candidates"]) > 0:
-                report_html = data["candidates"][0]["content"]["parts"][0]["text"]
-                # Clean up if Gemini wrapped it in markdown
-                report_html = report_html.replace("```html", "").replace("```", "").strip()
-                return report_html
-            else:
-                print("No candidates found in Gemini response.")
-                return self._generate_fallback_report(search_results)
-                
-        except Exception as e:
-            print(f"Error generating report with Gemini REST API: {e}")
-            return self._generate_fallback_report(search_results)
+{COMPANY_CONTEXT}
+
+A partir de los siguientes resultados de búsqueda de esta semana:
+{search_results}
+
+Redacta un informe de inteligencia de mercado semanal en HTML puro (sin <html> ni <body>).
+El informe debe ser ESPECÍFICO y ACCIONABLE. Menciona nombres reales, fechas, importes, entidades concretas.
+Nunca uses frases vagas como "se recomienda vigilar". En su lugar, di qué entidad hace qué y cuándo.
+
+ESTRUCTURA OBLIGATORIA:
+
+<h2>🏁 Competidores y Movimientos del Sector EdTech</h2>
+¿Hay nuevas startups EdTech en España? ¿Algún actor ha lanzado herramientas de IA para educación/inclusión?
+¿Alguna empresa relevante ha conseguido financiación? Menciona nombres, cuantías y fechas.
+
+<h2>📰 Noticias Relevantes (FP Dual, IA Educativa, Inclusión)</h2>
+Noticias de esta semana sobre FP Dual, tecnología educativa, NEAE, reformas legislativas.
+Con fecha y medio de comunicación. Enfócate en España y Europa (AI Act).
+
+<h2>💰 Ayudas, Subvenciones y Financiación</h2>
+Convocatorias abiertas o recién publicadas: BOE, diarios oficiales de CCAA, fondos NextGenEU, CDTI, ENISA.
+Incluye: nombre de la convocatoria, entidad, cuantía máxima y fecha de cierre si está disponible.
+Estas ayudas son CRÍTICAS para Duale — no omitas ninguna aunque sea pequeña.
+
+<h2>🏛️ Licitaciones y Proyectos Públicos</h2>
+Contratos del Ministerio de Educación, Consejerías, ayuntamientos para tecnología educativa, accesibilidad o FP.
+Incluye referencia del contrato y presupuesto estimado si está disponible.
+
+<h2>🎯 Oportunidades Clave para Duale esta semana</h2>
+Basándote en todo lo anterior, identifica 3-5 acciones concretas que Duale debería tomar esta semana.
+Ejemplo: "Presentarse a la convocatoria X antes del DD/MM", "Contactar con la empresa Y que acaba de anunciar Z".
+
+REGLAS DE FORMATO:
+- Usa <ul><li> para bullets. Pon en <strong> nombres de entidades, empresas y convocatorias.
+- Incluye el enlace fuente cuando exista: <a href="URL" target="_blank">[Fuente]</a>
+- Si no hay datos para una sección: <p><em>Sin noticias relevantes esta semana.</em></p>
+- Idioma: Español."""
+
+        result = _call_groq(prompt)
+        if result:
+            return result
+        return self._fallback(search_results)
 
     def generate_linkedin_post(self, search_results):
-        """Generate a LinkedIn newsletter post from the search results."""
-        if not self.api_key or self.api_key == "YOUR_GEMINI_API_KEY_HERE":
-            return "No se pudo generar el post de LinkedIn porque la API de Gemini no está configurada."
+        prompt = f"""Eres el Community Manager de Duale (www.duale.es), startup de IA para FP Dual Inclusiva en España.
 
-        prompt = f"""
-        Actúa como el Community Manager de 'Duale' (www.duale.es), una startup EdTech que crea un copilot de IA para la inclusión en FP Dual.
-        
-        A partir de los siguientes resultados de búsqueda de esta semana, redacta un POST DE LINKEDIN brillante, estilo "Newsletter Semanal" que resuma la actualidad del sector para un público profesional y corporativo (centros de FP, tutores de empresa, inversores).
-        
-        Resultados de búsqueda:
-        {search_results}
-        
-        Instrucciones para el POST:
-        - Tono: Profesional, motivador y orientado a la inclusión (\u267f) y la tecnología (\ud83d\ude80).
-        - Estructura: 
-          1. Un "gancho" inicial (titular).
-          2. Tres puntos clave (bullets) con los descubrimientos más importantes de la semana (ayudas, noticias o competidores).
-          3. Una reflexión final sobre cómo Duale forma parte del futuro de la FP Dual.
-          4. Llamada a la acción (CTA) animando a comentar o visitar duale.es.
-        - Longitud: Un formato ideal para leer en móvil, saltos de línea frecuentes.
-        - Hashtags: Incluye de 3 a 5 hashtags relevantes (ej. #FPDual #EdTech #DesarrolloInclusivo).
-        - Idioma: Español.
-        """
-        
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "temperature": 0.2
-            }
-        }
-        
-        try:
-            print("Generating LinkedIn post via Gemini REST API...")
-            response = requests.post(self.url, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            
-            if "candidates" in data and len(data["candidates"]) > 0:
-                post_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                return post_text.strip()
-            else:
-                return "Error: No se encontró contenido en la respuesta de Gemini."
-        except Exception as e:
-            print(f"Error generating LinkedIn post: {e}")
-            return f"Error: {e}"
+{COMPANY_CONTEXT}
 
-    def _generate_fallback_report(self, search_results):
-        """Simple fallback if Gemini is not available."""
-        html = "<h1>Informe Semanal de Mercado - Duale</h1>"
-        html += "<p>Nota: Este es un informe simplificado (Error en Gemini API o clave no configurada).</p>"
-        for query, urls in search_results.items():
-            html += f"<h3>{query}</h3><ul>"
-            for url in urls:
-                html += f"<li><a href='{url}'>{url}</a></li>"
+Basándote en estos resultados de búsqueda de esta semana:
+{search_results}
+
+Redacta un post de LinkedIn semanal de máximo 300 palabras. Público objetivo: directores de FP, tutores de empresa, responsables de RRHH de empresas colaboradoras, inversores EdTech.
+
+Estructura:
+1. Gancho poderoso en la primera línea (dato, pregunta o provocación sobre FP Dual o inclusión).
+2. 3 puntos clave de la semana con datos concretos (noticias, ayudas, tendencias).
+3. Conexión con el problema que resuelve Duale (sin ser vendedor, sutil).
+4. CTA: comentar, compartir o visitar duale.es.
+
+Tono: Profesional, motivador, orientado a la inclusión. Saltos de línea frecuentes.
+Hashtags: #FPDual #EdTech #InclusiónEducativa #Duale #NEAE #FormaciónProfesional
+Idioma: Español."""
+
+        result = _call_groq(prompt)
+        return result or "Post no disponible esta semana."
+
+    def _fallback(self, search_results):
+        html = "<h1>Informe Duale — Datos Recopilados</h1>"
+        html += "<p><em>El motor de IA no pudo conectar esta semana. Aquí están los datos en bruto:</em></p>"
+        for query, items in search_results.items():
+            html += f"<h3>🔍 {query}</h3><ul>"
+            for item in items:
+                if isinstance(item, dict):
+                    url = item.get('url', '#')
+                    content = item.get('content', '')[:300]
+                    html += f"<li><a href='{url}' target='_blank'>[Fuente]</a> — {content}</li>"
             html += "</ul>"
         return html
