@@ -36,6 +36,20 @@ Duale (www.duale.es) es un copiloto de IA especializado en FP Dual Inclusiva en 
 """
 
 
+def _compact_results(search_results, max_items_per_query=3, max_title_chars=120):
+    """Serialize search results compactly to keep prompt size under API limits."""
+    lines = []
+    for query, items in search_results.items():
+        lines.append(f"[{query}]")
+        for item in items[:max_items_per_query]:
+            content = item.get("content", "")
+            parts = content.split("\n")
+            title = parts[0][:max_title_chars] if parts else ""
+            url = item.get("url", "")[:200]
+            lines.append(f"  - {title} | {url}")
+    return "\n".join(lines)
+
+
 def _call_groq(prompt, max_retries=4):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -73,7 +87,7 @@ class ReportGenerator:
 {COMPANY_CONTEXT}
 
 A partir de los siguientes resultados de búsqueda de esta semana:
-{search_results}
+{_compact_results(search_results)}
 
 Redacta un informe de inteligencia de mercado semanal en HTML puro (sin <html> ni <body>).
 El informe debe ser ESPECÍFICO y ACCIONABLE. Menciona nombres reales, fechas, importes, entidades concretas.
@@ -119,7 +133,7 @@ REGLAS DE FORMATO:
 {COMPANY_CONTEXT}
 
 Basándote en estos resultados de búsqueda de esta semana:
-{search_results}
+{_compact_results(search_results)}
 
 Redacta un post de LinkedIn semanal de máximo 300 palabras. Público objetivo: directores de FP, tutores de empresa, responsables de RRHH de empresas colaboradoras, inversores EdTech.
 
