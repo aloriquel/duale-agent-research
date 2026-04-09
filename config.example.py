@@ -11,7 +11,7 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "YOUR_APP_PASSWORD")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL", "recipient@domain.com")
 
 # API Keys — get yours free at console.groq.com
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "YOUR_GROQ_API_KEY_HERE")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "YOUR_ANTHROPIC_API_KEY_HERE")
 
 # Research Parameters — Duale
 KEYWORDS = [

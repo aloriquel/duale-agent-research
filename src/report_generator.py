@@ -1,9 +1,7 @@
-import requests
-import time
-from config import GROQ_API_KEY, REPORT_LANGUAGE
+import anthropic
+from config import ANTHROPIC_API_KEY, REPORT_LANGUAGE
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "claude-haiku-4-5-20251001"
 
 # === COMPANY CONTEXT ===
 # Duale (www.duale.es) is an AI copilot specialized in Inclusive FP Dual (Spanish vocational training).
@@ -37,7 +35,7 @@ Duale (www.duale.es) es un copiloto de IA especializado en FP Dual Inclusiva en 
 
 
 def _compact_results(search_results, max_items_per_query=3, max_title_chars=120):
-    """Serialize search results compactly to keep prompt size under API limits."""
+    """Serialize search results compactly to keep prompt size manageable."""
     lines = []
     for query, items in search_results.items():
         lines.append(f"[{query}]")
@@ -50,34 +48,20 @@ def _compact_results(search_results, max_items_per_query=3, max_title_chars=120)
     return "\n".join(lines)
 
 
-def _call_groq(prompt, max_retries=4):
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3,
-        "max_tokens": 4096
-    }
-    for attempt in range(1, max_retries + 1):
-        try:
-            print(f"Groq API call attempt {attempt}/{max_retries}...")
-            r = requests.post(GROQ_URL, json=payload, headers=headers, timeout=60)
-            if r.status_code == 429:
-                wait = 15 * attempt
-                print(f"Rate limit. Waiting {wait}s...")
-                time.sleep(wait)
-                continue
-            r.raise_for_status()
-            data = r.json()
-            text = data["choices"][0]["message"]["content"]
-            return text.replace("```html", "").replace("```", "").strip()
-        except Exception as e:
-            print(f"Error on attempt {attempt}: {e}")
-            time.sleep(5)
-    return None
+def _call_claude(prompt):
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    try:
+        print("Calling Claude API...")
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        text = message.content[0].text
+        return text.replace("```html", "").replace("```", "").strip()
+    except Exception as e:
+        print(f"Claude API error: {e}")
+        return None
 
 
 class ReportGenerator:
@@ -122,7 +106,7 @@ REGLAS DE FORMATO:
 - Si no hay datos para una sección: <p><em>Sin noticias relevantes esta semana.</em></p>
 - Idioma: Español."""
 
-        result = _call_groq(prompt)
+        result = _call_claude(prompt)
         if result:
             return result
         return self._fallback(search_results)
@@ -147,7 +131,7 @@ Tono: Profesional, motivador, orientado a la inclusión. Saltos de línea frecue
 Hashtags: #FPDual #EdTech #InclusiónEducativa #Duale #NEAE #FormaciónProfesional
 Idioma: Español."""
 
-        result = _call_groq(prompt)
+        result = _call_claude(prompt)
         return result or "Post no disponible esta semana."
 
     def _fallback(self, search_results):
