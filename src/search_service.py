@@ -43,7 +43,7 @@ class SearchService:
                 res = requests.get(rss_url, headers=headers, timeout=10)
                 res.raise_for_status()
                 
-                root = ET.fromstring(res.text)
+                root = ET.fromstring(res.content)
                 
                 # Extract Top 4 news items
                 for item in root.findall('.//item')[:4]:
