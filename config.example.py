@@ -3,17 +3,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Gemini REST API Endpoint
-GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"
-
-# Email Configuration
+# SMTP Configuration
 SMTP_SERVER = "smtp.office365.com"
 SMTP_PORT = 587
-SMTP_USERNAME = "your_email@domain.com"
-SMTP_PASSWORD = "YOUR_APP_PASSWORD"
-RECIPIENT_EMAIL = "recipient@domain.com"
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "your_email@domain.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "YOUR_APP_PASSWORD")
+RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL", "recipient@domain.com")
 
-# Research Parameters
+# API Keys — get yours free at console.groq.com
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "YOUR_GROQ_API_KEY_HERE")
+
+# Research Parameters — Duale
 KEYWORDS = [
     "noticias Formación Profesional España",
     "startups EdTech española",

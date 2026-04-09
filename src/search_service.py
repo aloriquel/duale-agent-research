@@ -1,15 +1,10 @@
 import requests
 import time
-from config import KEYWORDS
-from bs4 import BeautifulSoup
-
-import requests
-import time
-from config import KEYWORDS
 import xml.etree.ElementTree as ET
 import urllib.parse
 import base64
 import re
+from config import KEYWORDS
 
 class SearchService:
     def __init__(self):
